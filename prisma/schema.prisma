@@ -1,0 +1,150 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String   @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @default(now()) @map("updated_at")
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model User {
+  id                     String      @id @default(cuid())
+  name                   String?
+  email                  String?     @unique
+  emailVerified          DateTime?
+  image                  String?
+  createdAt              DateTime    @default(now()) @map("created_at")
+  updatedAt              DateTime    @default(now()) @map("updated_at")
+  role                   UserRole    @default(USER)
+  stripeCustomerId       String?     @unique @map("stripe_customer_id")
+  stripeSubscriptionId   String?     @unique @map("stripe_subscription_id")
+  stripePriceId          String?     @map("stripe_price_id")
+  stripeCurrentPeriodEnd DateTime?   @map("stripe_current_period_end")
+  accounts               Account[]
+  interviews             Interview[]
+  sessions               Session[]
+
+  @@map("users")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+enum InterviewDifficulty {
+  JUNIOR
+  MID_LEVEL
+  SENIOR
+  LEAD
+  PRINCIPAL
+}
+
+enum InterviewLanguage {
+  EN
+  FR
+  ES
+  DE
+  AR
+}
+
+model Interview {
+  id                  String              @id @default(cuid())
+  userId              String
+  jobTitle            String
+  jobDescription      String
+  difficulty          InterviewDifficulty @default(JUNIOR)
+  yearsOfExperience   String
+  language            InterviewLanguage   @default(EN)
+  interviewScore      Float?
+  targetCompany       String?
+  overAllFeedback     String?
+  resume              String?
+  duration            Int?
+  questionsAnswered   Int?
+  skillsAssessed      String[] // Array to store multiple skills
+  technicalScore      Float?
+  communicationScore  Float?
+  problemSolvingScore Float?
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @default(now()) @map("updated_at")
+  interviewData       InterviewData[]
+  user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status              String              @default("PROCESSING")
+  errorMessage        String?
+
+  @@index([userId])
+  @@map("interviews")
+}
+
+model InterviewData {
+  id                String             @id @default(cuid())
+  interviewId       String
+  aiQuestion        String
+  aiAnswer          String
+  userAnswer        String
+  questionsScore    Int?
+  questionFeedback  String?
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @default(now()) @map("updated_at")
+  interview         Interview          @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  learningResources LearningResource[]
+
+  @@index([interviewId])
+  @@map("interview_data")
+}
+
+model LearningResource {
+  id              String        @id @default(cuid())
+  interviewDataId String
+  title           String
+  url             String
+  type            String
+  description     String
+  interviewData   InterviewData @relation(fields: [interviewDataId], references: [id], onDelete: Cascade)
+
+  @@index([interviewDataId])
+  @@map("learning_resources")
+}
+
+enum UserRole {
+  ADMIN
+  USER
+}
